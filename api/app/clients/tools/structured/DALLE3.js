@@ -9,6 +9,8 @@ const { HttpsProxyAgent } = require('https-proxy-agent');
 const saveImageFromUrl = require('../saveImageFromUrl');
 const extractBaseURL = require('~/utils/extractBaseURL');
 const { logger } = require('~/config');
+const { OpenAIClient, AzureKeyCredential } = require('@azure/openai');
+
 
 const { DALLE3_SYSTEM_PROMPT, DALLE_REVERSE_PROXY, PROXY } = process.env;
 class DALLE3 extends Tool {
@@ -23,6 +25,11 @@ class DALLE3 extends Tool {
 
     if (PROXY) {
       config.httpAgent = new HttpsProxyAgent(PROXY);
+    }
+
+    console.log('call dalle3', process.env.DALLE3_AZURE_ENDPOINT);
+    if (process.env.DALLE3_AZURE_ENDPOINT !== '') {
+      this.azure_openai = new OpenAIClient(process.env.DALLE3_AZURE_ENDPOINT, new AzureKeyCredential(apiKey));
     }
 
     this.openai = new OpenAI(config);
@@ -99,14 +106,20 @@ class DALLE3 extends Tool {
 
     let resp;
     try {
-      resp = await this.openai.images.generate({
-        model: 'dall-e-3',
-        quality,
-        style,
-        size,
-        prompt: this.replaceUnwantedChars(prompt),
-        n: 1,
-      });
+      if (process.env.DALLE3_AZURE_ENDPOINT !== '') {
+        const opt = { n: 1, size, style, quality };
+        console.log('use azure dalle3', process.env.DALLE3_AZURE_ENDPOINT, this.replaceUnwantedChars(prompt), opt);
+        resp = await this.azure_openai.getImages('dall-e-3', this.replaceUnwantedChars(prompt), opt);
+      } else {
+        resp = await this.openai.images.generate({
+          model: 'dall-e-3',
+          quality,
+          style,
+          size,
+          prompt: this.replaceUnwantedChars(prompt),
+          n: 1,
+        });
+      }
     } catch (error) {
       return `Something went wrong when trying to generate the image. The DALL-E API may unavailable:
 Error Message: ${error.message}`;
@@ -117,17 +130,18 @@ Error Message: ${error.message}`;
     }
 
     const theImageUrl = resp.data[0].url;
+    console.log(theImageUrl);
 
     if (!theImageUrl) {
       return 'No image URL returned from OpenAI API. There may be a problem with the API or your configuration.';
     }
 
-    const regex = /img-[\w\d]+.png/;
+    const regex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
     const match = theImageUrl.match(regex);
     let imageName = '1.png';
 
     if (match) {
-      imageName = match[0];
+      imageName = match[0] + '.png';
       logger.debug('[DALL-E-3]', { imageName }); // Output: img-lgCf7ppcbhqQrz6a5ear6FOb.png
     } else {
       logger.debug('[DALL-E-3] No image name found in the string.', {

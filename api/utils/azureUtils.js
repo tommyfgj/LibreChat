@@ -55,6 +55,11 @@ const genAzureChatCompletion = (
     throw new Error('Either a model name or a deployment name must be provided.');
   }
 
+  if (deploymentSegment.includes('vision')) {
+    return `https://${process.env.AZURE_OPENAI_VISION_INSTANCE_NAME}.openai.azure.com/openai/deployments/${deploymentSegment}/chat/completions?api-version=${azureOpenAIApiVersion}`;
+  }
+
+  console.log('endpoint', `https://${azureOpenAIApiInstanceName}.openai.azure.com/openai/deployments/${deploymentSegment}/chat/completions?api-version=${azureOpenAIApiVersion}`);
   return `https://${azureOpenAIApiInstanceName}.openai.azure.com/openai/deployments/${deploymentSegment}/chat/completions?api-version=${azureOpenAIApiVersion}`;
 };
 

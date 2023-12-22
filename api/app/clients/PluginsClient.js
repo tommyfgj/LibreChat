@@ -30,6 +30,7 @@ class PluginsClient extends OpenAIClient {
 
     super.setOptions(options);
 
+    console.log('this.agentOptions', this.agentOptions);
     if (this.functionsAgent && this.agentOptions.model && !this.useOpenRouter) {
       this.agentOptions.model = this.getFunctionModelName(this.agentOptions.model);
     }
@@ -55,6 +56,7 @@ class PluginsClient extends OpenAIClient {
   }
 
   getFunctionModelName(input) {
+    console.log('getFunctionModelName', input);
     if (/-(?!0314)\d{4}/.test(input)) {
       return input;
     } else if (input.includes('gpt-3.5-turbo')) {

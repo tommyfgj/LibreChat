@@ -43,6 +43,7 @@ async function setupOpenId() {
       client_id: process.env.OPENID_CLIENT_ID,
       client_secret: process.env.OPENID_CLIENT_SECRET,
       redirect_uris: [process.env.DOMAIN_SERVER + process.env.OPENID_CALLBACK_URL],
+      id_token_signed_response_alg: 'ES384',
     });
 
     const openidLogin = new OpenIDStrategy(

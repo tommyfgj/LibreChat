@@ -770,7 +770,11 @@ ${convo}
 
         opts.baseURL = this.azureEndpoint.split('/chat')[0];
         opts.defaultQuery = { 'api-version': this.azure.azureOpenAIApiVersion };
-        opts.defaultHeaders = { ...opts.defaultHeaders, 'api-key': this.apiKey };
+        if (opts.baseURL.includes('vision')) {
+          opts.defaultHeaders = { ...opts.defaultHeaders, 'api-key': process.env.AZURE_OPENAI_VISION_API_KEY };
+        } else {
+          opts.defaultHeaders = { ...opts.defaultHeaders, 'api-key': this.apiKey };
+        }
       }
 
       let chatCompletion;

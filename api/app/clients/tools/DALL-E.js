@@ -9,6 +9,7 @@ const { HttpsProxyAgent } = require('https-proxy-agent');
 const extractBaseURL = require('~/utils/extractBaseURL');
 const saveImageFromUrl = require('./saveImageFromUrl');
 const { logger } = require('~/config');
+const { OpenAIClient, AzureKeyCredential } = require('@azure/openai');
 
 const { DALLE_REVERSE_PROXY, PROXY } = process.env;
 class OpenAICreateImage extends Tool {
@@ -48,6 +49,10 @@ class OpenAICreateImage extends Tool {
     //     }
     //   };
     // }
+    console.log('call dalle3', process.env.DALLE3_AZURE_ENDPOINT);
+    if (process.env.DALLE3_AZURE_ENDPOINT !== '') {
+      this.azure_openai = new OpenAIClient(process.env.DALLE3_AZURE_ENDPOINT, new AzureKeyCredential(apiKey));
+    }
     this.openai = new OpenAI(config);
     this.name = 'dall-e';
     this.description = `You can generate images with 'dall-e'. This tool is exclusively for visual content.
@@ -83,13 +88,22 @@ Guidelines:
   }
 
   async _call(input) {
-    const resp = await this.openai.images.generate({
-      prompt: this.replaceUnwantedChars(input),
-      // TODO: Future idea -- could we ask an LLM to extract these arguments from an input that might contain them?
-      n: 1,
-      // size: '1024x1024'
-      size: '512x512',
-    });
+    console.log('use azure dalle3', input);
+    let resp;
+    if (process.env.DALLE3_AZURE_ENDPOINT !== '') {
+      const opt = { n: 1, size: '1024x1024' };
+      console.log('use azure dalle3', process.env.DALLE3_AZURE_ENDPOINT, this.replaceUnwantedChars(input), opt);
+      resp = await this.azure_openai.getImages('dall-e-3', this.replaceUnwantedChars(input), opt);
+    } else {
+      resp = await this.openai.images.generate({
+        prompt: this.replaceUnwantedChars(input),
+        // TODO: Future idea -- could we ask an LLM to extract these arguments from an input that might contain them?
+        n: 1,
+        // size: '1024x1024'
+        size: '512x512',
+      });
+    }
+
 
     const theImageUrl = resp.data[0].url;
 
